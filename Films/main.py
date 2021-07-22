@@ -7,6 +7,8 @@ FIELDS = ('Идентификатор', 'Название', 'Год', 'Жанр'
 DB_FIELDS = ('id', 'title', 'year', 'genre', 'duration')
 ID_POSITION = 0
 GENRE_POSITION = 3
+DIF_FOR_GENRES_ID = 3
+DIF_FOR_FILMS_ID = 6000
 
 
 class MainWidget(QWidget):
@@ -172,17 +174,15 @@ class FilmsTable(QWidget):
                                              FROM genres 
                                              WHERE title = ?""", (data['genre'],)).fetchone()
         if not id_of_genre:
-            id_of_genre = list(self.cursor.execute("""SELECT COUNT(*) FROM genres""").fetchone())[0] + 3
+            id_of_genre = list(self.cursor.execute("""SELECT COUNT(*) FROM genres""").fetchone())[0] + DIF_FOR_GENRES_ID
             self.cursor.execute("""INSERT INTO genres(id,title) VALUES(?, ?)""", (id_of_genre, data['genre']))
+            self.connection.commit()
         else:
             id_of_genre = list(id_of_genre)[0]
-        film_id = list(self.cursor.execute("""SELECT COUNT(*) FROM Films""").fetchone())[0] + 2000
-        print(film_id, data["title"], data["year"], id_of_genre, data["duration"])
-        sql = """INSERT INTO Films VALUES (?, ?, ?, ?, ?)"""
-        self.cursor.execute(sql, (film_id, data["title"], data["year"], id_of_genre, data["duration"]))
-        print('execute')
+        film_id = list(self.cursor.execute("""SELECT COUNT(*) FROM Films""").fetchone())[0] + DIF_FOR_FILMS_ID
+        self.cursor.execute("""INSERT INTO Films(id,title,year,genre,duration) VALUES (?, ?, ?, ?, ?)""",
+                            (film_id, data["title"], data["year"], id_of_genre, data["duration"]))
         self.connection.commit()
-        print('commit')
         item = QTableWidgetItem(film_id)
         item.setFlags(item.flags() ^ Qt.ItemIsEditable)
 
@@ -260,12 +260,10 @@ class NewFilmForm(QWidget):
             'duration': self.duration.value()
         }
         self.parent.table.add(res)
-        print('t')
         self.year.setValue(0)
         self.duration.setValue(0)
         self.title.setText("")
         self.genre.setText("")
-        print('smth')
         self.parent.switch_to_table()
 
 
