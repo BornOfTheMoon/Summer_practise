@@ -1,28 +1,98 @@
+import datetime
 import random
+import sqlite3
 import sys
 
 from PyQt5.QtCore import Qt, QBasicTimer, pyqtSignal
 from PyQt5.QtGui import QPainter, QColor
-from PyQt5.QtWidgets import QMainWindow, QFrame, QDesktopWidget, QApplication
+from PyQt5.QtWidgets import QMainWindow, QFrame, QDesktopWidget, QApplication, QPushButton, QDialog, QWidget, qApp, \
+    QTableWidget, QTableWidgetItem
+
+connection = sqlite3.connect('rate.db')
+cursor = connection.cursor()
+cursor.execute("""CREATE TABLE IF NOT EXISTS 'results' (
+                    'result' int NOT NULL,
+                    'month' int NOT NULL,
+                    'day' int NOT NULL,
+                    'hour' int NOT NULL,
+                    'minute' int NOT NULL
+                    )""")
+
+
+FIELDS = ('Результат', 'Месяц', 'День', 'Час', 'Минута')
+
+
+def terminate():
+    sys.exit()
+
+
+
+
+
+
+class ResultsTable(QMainWindow):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.table = QTableWidget()
+        self.setGeometry(200, 100, 500, 600)
+
+    def show_results(self, results):
+        for result in results:
+            print(result)
+
+
+def add_to_rate(result):
+    now = datetime.datetime.now()
+    cursor.execute("""INSERT INTO results VALUES(?, ?, ?, ?, ?)""", (result, now.month, now.day, now.hour, now.minute))
+    connection.commit()
 
 
 class Tetris(QMainWindow):
+    EXIT_CODE_REBOOT = -123
+
     def __init__(self):
         super().__init__()
         self.board = Board(self)
         self.statusbar = self.statusBar()
+        self.rate = ResultsTable(self)
+        self.play_button = QPushButton('Play', self)
+        self.rate_button = QPushButton('Rate', self)
+        self.exit_button = QPushButton('Exit', self)
+
+        self.menu_init()
+        self.show()
+
+    def menu_init(self):
+        self.resize(420, 100)
+        self.center()
+        self.setWindowTitle('Tetris')
+
+        self.play_button.clicked.connect(self.play)
+        self.play_button.move(20, 35)
+        self.rate_button.clicked.connect(self.show_rate)
+        self.rate_button.move(160, 35)
+        self.exit_button.clicked.connect(terminate)
+        self.exit_button.move(300, 35)
+
+    def play(self):
+        self.play_button.hide()
+        self.rate_button.hide()
+        self.exit_button.hide()
         self.setCentralWidget(self.board)
         self.board.msg_statusbar[str].connect(self.statusbar.showMessage)
         self.board.start()
         self.resize(400, 700)
         self.center()
-        self.setWindowTitle('Tetris')
-        self.show()
 
     def center(self):
         screen = QDesktopWidget().screenGeometry()
         size = self.geometry()
         self.move(int((screen.width() - size.width()) / 2), int((screen.height() - size.height()) / 2))
+
+    def show_rate(self):
+        results = list(cursor.execute("""SELECT result FROM results ORDER BY result DESC""").fetchmany(50))
+        self.rate.show_results(results)
+        self.rate.show()
 
 
 class Board(QFrame):
@@ -38,12 +108,13 @@ class Board(QFrame):
         self.is_waiting_after_line = False
         self.cur_x = 0
         self.cur_y = 0
-        self.numLinesRemoved = 0
+        self.num_lines_removed = 0
         self.board = []
 
         self.setFocusPolicy(Qt.StrongFocus)
         self.is_started = False
         self.is_paused = False
+        self.is_lose = False
         self.clear_board()
 
     def shape_at(self, x, y):
@@ -64,10 +135,10 @@ class Board(QFrame):
 
         self.is_started = True
         self.is_waiting_after_line = False
-        self.numLinesRemoved = 0
+        self.num_lines_removed = 0
         self.clear_board()
 
-        self.msg_statusbar.emit(str(self.numLinesRemoved))
+        self.msg_statusbar.emit(str(self.num_lines_removed))
 
         self.new_piece()
         self.timer.start(Board.speed, self)
@@ -84,7 +155,7 @@ class Board(QFrame):
 
         else:
             self.timer.start(Board.speed, self)
-            self.msg_statusbar.emit(str(self.numLinesRemoved))
+            self.msg_statusbar.emit(str(self.num_lines_removed))
 
         self.update()
 
@@ -108,11 +179,15 @@ class Board(QFrame):
                                  board_top + (Board.board_height - y - 1) * self.square_height(), self.cur_piece.shape())
 
     def keyPressEvent(self, event):
+
+        key = event.key()
+
+        if key == Qt.Key_E:
+            qApp.exit(Tetris.EXIT_CODE_REBOOT)
+
         if not self.is_started or self.cur_piece.shape() == Tetrominoe.no_shape:
             super(Board, self).keyPressEvent(event)
             return
-
-        key = event.key()
 
         if key == Qt.Key_P:
             self.pause()
@@ -128,7 +203,7 @@ class Board(QFrame):
             self.try_move(self.cur_piece, self.cur_x + 1, self.cur_y)
 
         elif key == Qt.Key_Up:
-            self.try_move(self.cur_piece.left_rotate(), self.cur_x, self.cur_y)
+            self.try_move(self.cur_piece.rotate(), self.cur_x, self.cur_y)
 
         elif key == Qt.Key_Down:
             self.one_line_down()
@@ -202,8 +277,8 @@ class Board(QFrame):
         num_full_lines = num_full_lines + len(rows_to_remove)
 
         if num_full_lines > 0:
-            self.numLinesRemoved = self.numLinesRemoved + num_full_lines
-            self.msg_statusbar.emit(str(self.numLinesRemoved))
+            self.num_lines_removed = self.num_lines_removed + num_full_lines
+            self.msg_statusbar.emit(str(self.num_lines_removed))
             self.is_waiting_after_line = True
             self.cur_piece.set_shape(Tetrominoe.no_shape)
             self.update()
@@ -218,6 +293,8 @@ class Board(QFrame):
             self.timer.stop()
             self.is_started = False
             self.msg_statusbar.emit("Game over")
+            add_to_rate(self.num_lines_removed)
+            self.is_lose = True
 
     def try_move(self, new_piece, new_x, new_y):
         for i in range(4):
@@ -317,7 +394,7 @@ class Shape(object):
 
         return m
 
-    def left_rotate(self):
+    def rotate(self):
         if self.piece_shape == Tetrominoe.square_shape:
             return self
 
@@ -332,6 +409,10 @@ class Shape(object):
 
 
 if __name__ == '__main__':
-    app = QApplication([])
-    tetris = Tetris()
-    sys.exit(app.exec_())
+    currentExitCode = Tetris.EXIT_CODE_REBOOT
+    while currentExitCode == Tetris.EXIT_CODE_REBOOT:
+        app = QApplication(sys.argv)
+        tetris = Tetris()
+        tetris.show()
+        currentExitCode = app.exec_()
+        app = None
