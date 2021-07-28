@@ -6,7 +6,7 @@ import sys
 from PyQt5.QtCore import Qt, QBasicTimer, pyqtSignal
 from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtWidgets import QMainWindow, QFrame, QDesktopWidget, QApplication, QPushButton, QDialog, QWidget, qApp, \
-    QTableWidget, QTableWidgetItem
+    QTableWidget, QTableWidgetItem, QLabel, QVBoxLayout, QComboBox, QHBoxLayout, QInputDialog
 
 connection = sqlite3.connect('rate.db')
 cursor = connection.cursor()
@@ -26,29 +26,55 @@ def terminate():
     sys.exit()
 
 
-
-
-
-
-class ResultsTable(QMainWindow):
+class TableWidget(QWidget):
     def __init__(self, parent):
-        super().__init__(parent)
+        super().__init__()
+        self.parent = parent
+        self.table = ResultsTable(self)
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        main_layout = QVBoxLayout()
+        self.table.setMinimumSize(800, 600)
+        main_layout.addWidget(self.table)
+
+        self.setLayout(main_layout)
+
+
+class ResultsTable(QWidget):
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
         self.table = QTableWidget()
-        self.setGeometry(200, 100, 500, 600)
+        self.setup_ui()
 
-    def show_results(self, results):
-        for result in results:
-            print(result)
+    def setup_ui(self):
+        layout = QVBoxLayout()
+        layout.addWidget(self.table)
+        self.setLayout(layout)
+        results = list(cursor.execute("""SELECT * FROM results ORDER BY result DESC""").fetchmany(100))
+        if len(results) > 0:
+            self.table.setColumnCount(len(results[0]))
+        self.table.setHorizontalHeaderLabels(FIELDS)
+        self.table.setRowCount(0)
+        for i, row in enumerate(results):
+            self.table.setRowCount(self.table.rowCount() + 1)
+            for j, element in enumerate(row):
+                item = QTableWidgetItem(str(element))
+                self.table.setItem(i, j, item)
+
+        self.table.resizeColumnsToContents()
 
 
-def add_to_rate(result):
+def add_to_rating(result):
     now = datetime.datetime.now()
     cursor.execute("""INSERT INTO results VALUES(?, ?, ?, ?, ?)""", (result, now.month, now.day, now.hour, now.minute))
     connection.commit()
 
 
 class Tetris(QMainWindow):
-    EXIT_CODE_REBOOT = -123
+    EXIT_CODE_REBOOT = -123456789
 
     def __init__(self):
         super().__init__()
@@ -90,9 +116,8 @@ class Tetris(QMainWindow):
         self.move(int((screen.width() - size.width()) / 2), int((screen.height() - size.height()) / 2))
 
     def show_rate(self):
-        results = list(cursor.execute("""SELECT result FROM results ORDER BY result DESC""").fetchmany(50))
-        self.rate.show_results(results)
-        self.rate.show()
+        self.table = TableWidget(self)
+        self.table.show()
 
 
 class Board(QFrame):
@@ -293,7 +318,7 @@ class Board(QFrame):
             self.timer.stop()
             self.is_started = False
             self.msg_statusbar.emit("Game over")
-            add_to_rate(self.num_lines_removed)
+            add_to_rating(self.num_lines_removed)
             self.is_lose = True
 
     def try_move(self, new_piece, new_x, new_y):
