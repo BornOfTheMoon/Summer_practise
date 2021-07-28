@@ -23,7 +23,7 @@ LOSE_MENU = ["Попробовать ещё", "", "Перейти в меню"]
 CONGRATES_TEXT = ["Вы помогли единорогу выбраться!",
                   "Он Вам очень благодарен!"]
 
-COUNT_LEVELS = 2
+COUNT_LEVELS = 5
 
 
 pygame.init()
@@ -167,11 +167,12 @@ class Player(pygame.sprite.Sprite):
         if (m_x, math.floor(m_y + 1)) in spikes_indexes and direction[0] != 0:
             all_sprites.draw(screen)
             player_group.draw(screen)
-            self.kill()
+            for sprite in all_sprites:
+                sprite.kill()
             spikes_indexes.clear()
             grasses_indexes.clear()
             lose_screen()
-        if (not (m_x, math.floor(m_y - 1)) in grasses_indexes) and direction[1] != 0 and self.on_ground:
+        if (not (m_x, math.floor(m_y)) in grasses_indexes) and direction[1] != 0 and self.on_ground:
             self.pos = m_x, m_y
             x, y = self.rect.x, self.rect.y + direction[1] * tile_height
             self.rect = self.image.get_rect().move(x, y)
@@ -182,7 +183,8 @@ class Player(pygame.sprite.Sprite):
         m_x, m_y = self.pos
         m_y += self.gravity
         if (m_x, math.floor(m_y + 1)) in spikes_indexes:
-            self.kill()
+            for sprite in all_sprites:
+                sprite.kill()
             spikes_indexes.clear()
             grasses_indexes.clear()
             lose_screen()
@@ -366,13 +368,13 @@ def play(number=1):
                 terminate()
             elif event.type == pygame.MOUSEMOTION:
                 x, y = event.pos
-                if x in range(980, 1020) and y in range(5, 25):
+                if x in range(980, 1085) and y in range(5, 25):
                     pygame.mouse.set_cursor(*pygame.cursors.tri_left)
                 else:
                     pygame.mouse.set_cursor(*pygame.cursors.arrow)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if x in range(980, 1020) and y in range(5, 25):
+                if x in range(980, 1085) and y in range(5, 25):
                     spikes_indexes.clear()
                     grasses_indexes.clear()
                     player.kill()
