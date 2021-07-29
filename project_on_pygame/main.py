@@ -1,8 +1,18 @@
+import sys
+import os
 import math
 
 import pygame
-import sys
-import os
+
+
+pygame.init()
+
+pygame.mixer.music.load('music/background.mp3')
+pygame.mixer.music.play(-1)
+
+door_sound = pygame.mixer.Sound('music/door.mp3')
+game_over_sound = pygame.mixer.Sound('music/game_over.mp3')
+win_sound = pygame.mixer.Sound('music/win.mp3')
 
 
 NAME_TEXT = ["Unicorn adventure"]
@@ -25,14 +35,13 @@ CONGRATES_TEXT = ["Вы помогли единорогу выбраться!",
 
 COUNT_LEVELS = 5
 
-pygame.init()
 size = WIDTH, HEIGHT = 1100, 700
-spike_width = lever_width = unicorn_width = unicorn_height = tile_width = tile_height = 110
+spike_width = lever_width = character_width = character_height = tile_width = tile_height = 110
 spike_height = lever_height = 50
 tile_size = tile_width, tile_height
 spike_size = spike_width, spike_height
 lever_size = lever_width, lever_height
-unicorn_size = unicorn_width, unicorn_height
+character_size = character_width, character_height
 screen = pygame.display.set_mode(size)
 FPS = 60
 clock = pygame.time.Clock()
@@ -81,6 +90,7 @@ spikes_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 doors_group = pygame.sprite.Group()
 levers_group = pygame.sprite.Group()
+
 spikes_indexes = []
 grasses_indexes = []
 
@@ -146,7 +156,7 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
         self.sprite = load_image('unicorn_r.png', -1)
-        self.image = pygame.transform.scale(self.sprite, unicorn_size)
+        self.image = pygame.transform.scale(self.sprite, character_size)
         self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y + 20)
         self.pos = pos_x, pos_y
         self.on_ground = True
@@ -159,22 +169,11 @@ class Player(pygame.sprite.Sprite):
         m_y += direction[1]
         if not (m_x in range(width) and math.floor(m_y) in range(height)):
             return
-        if (not (m_x, math.floor(m_y)) in grasses_indexes) and direction[0] != 0:
-            self.pos = m_x, m_y
-            x, y = self.rect.x + direction[0] * tile_width, self.rect.y
-            self.rect = self.image.get_rect().move(x, y)
-        if (m_x, math.floor(m_y + 1)) in spikes_indexes and direction[0] != 0:
-            all_sprites.draw(screen)
-            player_group.draw(screen)
-            for sprite in all_sprites:
-                sprite.kill()
-            spikes_indexes.clear()
-            grasses_indexes.clear()
-            lose_screen()
-        if (not (m_x, math.floor(m_y)) in grasses_indexes) and direction[1] != 0 and self.on_ground:
-            self.pos = m_x, m_y
-            x, y = self.rect.x, self.rect.y + direction[1] * tile_height
-            self.rect = self.image.get_rect().move(x, y)
+        if not (m_x, math.floor(m_y)) in grasses_indexes:
+            if (direction[0] != 0) or (direction[1] != 0 and self.on_ground):
+                self.pos = m_x, m_y
+                x, y = self.rect.x + direction[0] * tile_width, self.rect.y + direction[1] * tile_height
+                self.rect = self.image.get_rect().move(x, y)
         if not (m_x, math.floor(m_y + 1)) in grasses_indexes:
             self.on_ground = False
 
@@ -186,6 +185,7 @@ class Player(pygame.sprite.Sprite):
                 sprite.kill()
             spikes_indexes.clear()
             grasses_indexes.clear()
+            game_over_sound.play()
             lose_screen()
         if (m_x, math.floor(m_y + 1)) in grasses_indexes or m_y > 5:
             m_y = math.floor(m_y)
@@ -207,7 +207,7 @@ class Player(pygame.sprite.Sprite):
             self.vision = -1
         else:
             return
-        self.image = pygame.transform.scale(self.sprite, unicorn_size)
+        self.image = pygame.transform.scale(self.sprite, character_size)
         player_group.draw(screen)
         pygame.display.flip()
 
@@ -235,6 +235,7 @@ def generate_level(level, width, height):
             elif level[y][x] == '?':
                 Tile('wall', x, y)
                 new_lever = Lever(x, y)
+
     return new_player, new_lever, new_door
 
 
@@ -248,6 +249,15 @@ def show_text(text, font_size, text_coord_y, color, text_coord_x=120):
         text_rect.x = text_coord_x
         text_coord_y += text_rect.height
         screen.blit(string_rendered, text_rect)
+
+
+def show_dark_screen(first_text, second_text):
+    pygame.mouse.set_cursor(*pygame.cursors.arrow)
+    pygame.draw.rect(dark_background, (0, 0, 0, 200), (0, 0, WIDTH, HEIGHT))
+    screen.blit(dark_background, (0, 0))
+    show_text(first_text, 60, 120, (150, 150, 130))
+    show_text(second_text, 40, 300, (150, 150, 130))
+    pygame.display.flip()
 
 
 def start_screen():
@@ -294,12 +304,7 @@ def start_screen():
 
 
 def lose_screen():
-    pygame.mouse.set_cursor(*pygame.cursors.arrow)
-    pygame.draw.rect(dark_background, (0, 0, 0, 200), (0, 0, WIDTH, HEIGHT))
-    screen.blit(dark_background, (0, 0))
-    show_text(LOSE_TEXT, 60, 120, (150, 150, 130))
-    show_text(LOSE_MENU, 40, 300, (150, 150, 130))
-    pygame.display.flip()
+    show_dark_screen(LOSE_TEXT, LOSE_MENU)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -322,12 +327,7 @@ def lose_screen():
 
 
 def congrates_screen():
-    pygame.mouse.set_cursor(*pygame.cursors.arrow)
-    pygame.draw.rect(dark_background, (0, 0, 0, 200), (0, 0, WIDTH, HEIGHT))
-    screen.blit(dark_background, (0, 0))
-    show_text(CONGRATES_TEXT, 60, 120, (150, 150, 130))
-    show_text(BACK_TEXT, 40, 300, (150, 150, 130))
-    pygame.display.flip()
+    show_dark_screen(CONGRATES_TEXT, BACK_TEXT)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -350,6 +350,7 @@ def congrates_screen():
 def play(number=1):
 
     if number > COUNT_LEVELS:
+        win_sound.play()
         congrates_screen()
 
     pygame.mouse.set_cursor(*pygame.cursors.arrow)
@@ -392,16 +393,17 @@ def play(number=1):
                 elif event.key == pygame.K_SPACE:
                     player.move((0, -1), level_width, level_height)
 
-        if not player.on_ground:
-            player.fall()
-
         if player.pos == lever.pos and not lever.state:
+            door_sound.play()
             lever.update()
             door.update()
 
         all_sprites.draw(screen)
         player_group.draw(screen)
         pygame.display.flip()
+
+        if not player.on_ground:
+            player.fall()
 
         clock.tick(FPS)
 
