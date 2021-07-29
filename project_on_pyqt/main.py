@@ -82,6 +82,7 @@ class Tetris(QMainWindow):
         self.play_button = QPushButton('Play', self)
         self.rating_button = QPushButton('Rating', self)
         self.exit_button = QPushButton('Exit', self)
+        self.table = TableWidget(self)
 
         self.menu_init()
         self.show()
@@ -93,7 +94,7 @@ class Tetris(QMainWindow):
 
         self.play_button.clicked.connect(self.play)
         self.play_button.move(20, 35)
-        self.rating_button.clicked.connect(self.show_rating)
+        self.rating_button.clicked.connect(self.table.show)
         self.rating_button.move(160, 35)
         self.exit_button.clicked.connect(terminate)
         self.exit_button.move(300, 35)
@@ -112,10 +113,6 @@ class Tetris(QMainWindow):
         screen = QDesktopWidget().screenGeometry()
         size = self.geometry()
         self.move(int((screen.width() - size.width()) / 2), int((screen.height() - size.height()) / 2))
-
-    def show_rating(self):
-        self.table = TableWidget(self)
-        self.table.show()
 
 
 class Board(QFrame):
