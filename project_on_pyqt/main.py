@@ -6,30 +6,24 @@ import sqlite3
 from PyQt5.QtCore import Qt, QBasicTimer, pyqtSignal
 from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtWidgets import QMainWindow, QFrame, QDesktopWidget, QApplication, QPushButton, QWidget, qApp, \
-    QTableWidget, QTableWidgetItem, QVBoxLayout
-
+    QTableWidget, QTableWidgetItem, QVBoxLayout, QInputDialog
 
 connection = sqlite3.connect('rating.db')
 cursor = connection.cursor()
 cursor.execute("""CREATE TABLE IF NOT EXISTS 'results' (
                     'result' int NOT NULL,
+                    'name' text NOT NULL,
                     'month' int NOT NULL,
                     'day' int NOT NULL,
                     'hour' int NOT NULL,
                     'minute' int NOT NULL
                     )""")
 
-FIELDS = ('Результат', 'Месяц', 'День', 'Час', 'Минута')
+FIELDS = ('Результат', 'Имя', 'Месяц', 'День', 'Час', 'Минута')
 
 
 def terminate():
     sys.exit()
-
-
-def add_to_rating(result):
-    now = datetime.datetime.now()
-    cursor.execute("""INSERT INTO results VALUES(?, ?, ?, ?, ?)""", (result, now.month, now.day, now.hour, now.minute))
-    connection.commit()
 
 
 class TableWidget(QWidget):
@@ -310,7 +304,8 @@ class Board(QFrame):
             self.timer.stop()
             self.is_started = False
             self.msg_statusbar.emit("Game over")
-            add_to_rating(self.num_lines_removed)
+            self.add_to_rating(self.num_lines_removed)
+            qApp.exit(Tetris.EXIT_CODE_REBOOT)
 
     def try_move(self, new_piece, new_x, new_y):
         for i in range(4):
@@ -345,6 +340,14 @@ class Board(QFrame):
                          x + self.square_width() - 1, y + self.square_height() - 1)
         painter.drawLine(x + self.square_width() - 1, y + self.square_height() - 1,
                          x + self.square_width() - 1, y + 1)
+
+    def add_to_rating(self, result):
+        name, ok_pressed = QInputDialog.getText(self, 'name', 'Введите имя для рейтинга')
+        if ok_pressed:
+            now = datetime.datetime.now()
+            cursor.execute("""INSERT INTO results VALUES(?, ?, ?, ?, ?, ?)""", (result, name, now.month, now.day,
+                                                                                now.hour, now.minute))
+            connection.commit()
 
 
 class Figure(object):
