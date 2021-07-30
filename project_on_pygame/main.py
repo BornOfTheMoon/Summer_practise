@@ -31,7 +31,7 @@ BACK_TEXT = ["Перейти в меню"]
 GAME_OVER_TEXT = ["О нет!", "Единорог остался в замке!"]
 GAME_OVER_MENU = ["Попробовать ещё", "", "Перейти в меню"]
 WIN_TEXT = ["Вы помогли единорогу выбраться!",
-                  "Он Вам очень благодарен!"]
+            "Он Вам очень благодарен!"]
 
 COUNT_LEVELS = 5
 
@@ -174,6 +174,10 @@ class Player(pygame.sprite.Sprite):
                 self.pos = m_x, m_y
                 x, y = self.rect.x + direction[0] * tile_width, self.rect.y + direction[1] * tile_height
                 self.rect = self.image.get_rect().move(x, y)
+        if pygame.sprite.spritecollideany(self, spikes_group):
+            all_kill()
+            game_over_sound.play()
+            game_over_screen()
         if not (m_x, math.floor(m_y + 1)) in grasses_indexes:
             self.on_ground = False
 
@@ -181,10 +185,7 @@ class Player(pygame.sprite.Sprite):
         m_x, m_y = self.pos
         m_y += self.gravity
         if (m_x, math.floor(m_y + 1)) in spikes_indexes:
-            for sprite in all_sprites:
-                sprite.kill()
-            spikes_indexes.clear()
-            grasses_indexes.clear()
+            all_kill()
             game_over_sound.play()
             game_over_screen()
         if (m_x, math.floor(m_y + 1)) in grasses_indexes or m_y > 5:
@@ -347,6 +348,13 @@ def win_screen():
         clock.tick(FPS)
 
 
+def all_kill():
+    for sprite in all_sprites:
+        sprite.kill()
+    spikes_indexes.clear()
+    grasses_indexes.clear()
+
+
 def play(number=1):
 
     if number > COUNT_LEVELS:
@@ -377,9 +385,7 @@ def play(number=1):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
                 if x in range(980, 1085) and y in range(5, 25):
-                    spikes_indexes.clear()
-                    grasses_indexes.clear()
-                    player.kill()
+                    all_kill()
                     start_screen()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
@@ -408,9 +414,7 @@ def play(number=1):
         clock.tick(FPS)
 
         if player.pos == door.pos and door.state:
-            player.kill()
-            spikes_indexes.clear()
-            grasses_indexes.clear()
+            all_kill()
             number += 1
             play(number)
 
