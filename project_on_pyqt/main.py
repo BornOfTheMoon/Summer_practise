@@ -119,7 +119,7 @@ class Board(QFrame):
         super().__init__(parent)
         self.timer = QBasicTimer()
         self.cur_piece = Shape()
-        self.is_waiting_after_line = False
+        self.is_need_new_piece = False
         self.cur_x = 0
         self.cur_y = 0
         self.num_lines_removed = 0
@@ -147,7 +147,7 @@ class Board(QFrame):
             return
 
         self.is_started = True
-        self.is_waiting_after_line = False
+        self.is_need_new_piece = False
         self.num_lines_removed = 0
         self.clear_board()
 
@@ -227,8 +227,8 @@ class Board(QFrame):
 
     def timerEvent(self, event):
         if event.timerId() == self.timer.timerId():
-            if self.is_waiting_after_line:
-                self.is_waiting_after_line = False
+            if self.is_need_new_piece:
+                self.is_need_new_piece = False
                 self.new_piece()
             else:
                 self.one_line_down()
@@ -262,7 +262,7 @@ class Board(QFrame):
 
         self.remove_full_lines()
 
-        if not self.is_waiting_after_line:
+        if not self.is_need_new_piece:
             self.new_piece()
 
     def remove_full_lines(self):
@@ -290,7 +290,7 @@ class Board(QFrame):
         if num_full_lines > 0:
             self.num_lines_removed = self.num_lines_removed + num_full_lines
             self.msg_statusbar.emit(str(self.num_lines_removed))
-            self.is_waiting_after_line = True
+            self.is_need_new_piece = True
             self.cur_piece.set_shape(Figure.no_shape)
             self.update()
 
@@ -343,7 +343,7 @@ class Board(QFrame):
 
     def add_to_rating(self, result):
         name, ok_pressed = QInputDialog.getText(self, 'name', 'Введите имя для рейтинга')
-        if ok_pressed:
+        if ok_pressed and name != "":
             now = datetime.datetime.now()
             cursor.execute("""INSERT INTO results VALUES(?, ?, ?, ?, ?, ?)""", (result, name, now.month, now.day,
                                                                                 now.hour, now.minute))
