@@ -84,10 +84,10 @@ class Tetris(QMainWindow):
         self.exit_button = QPushButton('Exit', self)
         self.table = TableWidget(self)
 
-        self.menu_init()
+        self.setup_ui()
         self.show()
 
-    def menu_init(self):
+    def setup_ui(self):
         self.resize(420, 100)
         self.center()
         self.setWindowTitle('Tetris')
@@ -99,20 +99,20 @@ class Tetris(QMainWindow):
         self.exit_button.clicked.connect(terminate)
         self.exit_button.move(300, 35)
 
+    def center(self):
+        screen = QDesktopWidget().screenGeometry()
+        size = self.geometry()
+        self.move(int((screen.width() - size.width()) / 2), int((screen.height() - size.height()) / 2))
+
     def play(self):
         self.play_button.hide()
         self.rating_button.hide()
         self.exit_button.hide()
         self.setCentralWidget(self.board)
         self.board.msg_statusbar[str].connect(self.statusbar.showMessage)
-        self.board.start()
         self.resize(400, 700)
         self.center()
-
-    def center(self):
-        screen = QDesktopWidget().screenGeometry()
-        size = self.geometry()
-        self.move(int((screen.width() - size.width()) / 2), int((screen.height() - size.height()) / 2))
+        self.board.start()
 
 
 class Board(QFrame):
@@ -189,12 +189,12 @@ class Board(QFrame):
                     self.draw_square(painter, rect.left() + j * self.square_width(),
                                      board_top + i * self.square_height(), shape)
 
-        if self.cur_piece.shape() != Figure.no_shape:
+        if self.cur_piece.get_shape() != Figure.no_shape:
             for i in range(4):
                 x = self.cur_x + self.cur_piece.get_x(i)
                 y = self.cur_y - self.cur_piece.get_y(i)
                 self.draw_square(painter, rect.left() + x * self.square_width(), board_top +
-                                 (Board.board_height - y - 1) * self.square_height(), self.cur_piece.shape())
+                                 (Board.board_height - y - 1) * self.square_height(), self.cur_piece.get_shape())
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -202,7 +202,7 @@ class Board(QFrame):
         if key == Qt.Key_E:
             qApp.exit(Tetris.EXIT_CODE_REBOOT)
 
-        if not self.is_started or self.cur_piece.shape() == Figure.no_shape:
+        if not self.is_started or self.cur_piece.get_shape() == Figure.no_shape:
             super(Board, self).keyPressEvent(event)
             return
 
@@ -264,7 +264,7 @@ class Board(QFrame):
         for i in range(4):
             x = self.cur_x + self.cur_piece.get_x(i)
             y = self.cur_y - self.cur_piece.get_y(i)
-            self.set_shape_at(x, y, self.cur_piece.shape())
+            self.set_shape_at(x, y, self.cur_piece.get_shape())
 
         self.remove_full_lines()
 
@@ -291,7 +291,7 @@ class Board(QFrame):
                 for g in range(Board.board_width):
                     self.set_shape_at(g, k, self.get_shape_at(g, k + 1))
 
-        num_full_lines = num_full_lines + len(rows_to_remove)
+        num_full_lines += len(rows_to_remove)
 
         if num_full_lines > 0:
             self.num_lines_removed = self.num_lines_removed + num_full_lines
@@ -375,7 +375,7 @@ class Shape(object):
         self.piece_shape = Figure.no_shape
         self.set_shape(Figure.no_shape)
 
-    def shape(self):
+    def get_shape(self):
         return self.piece_shape
 
     def set_shape(self, shape):
