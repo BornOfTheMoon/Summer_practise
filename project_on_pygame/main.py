@@ -28,9 +28,9 @@ RULES_TEXT = ["""Помогите единорогу выбраться из з�
               """для прыжка.""",
               "Удачи! Единорог надеется на Вас!"]
 BACK_TEXT = ["Перейти в меню"]
-LOSE_TEXT = ["О нет!", "Единорог остался в замке!"]
-LOSE_MENU = ["Попробовать ещё", "", "Перейти в меню"]
-CONGRATES_TEXT = ["Вы помогли единорогу выбраться!",
+GAME_OVER_TEXT = ["О нет!", "Единорог остался в замке!"]
+GAME_OVER_MENU = ["Попробовать ещё", "", "Перейти в меню"]
+WIN_TEXT = ["Вы помогли единорогу выбраться!",
                   "Он Вам очень благодарен!"]
 
 COUNT_LEVELS = 5
@@ -186,7 +186,7 @@ class Player(pygame.sprite.Sprite):
             spikes_indexes.clear()
             grasses_indexes.clear()
             game_over_sound.play()
-            lose_screen()
+            game_over_screen()
         if (m_x, math.floor(m_y + 1)) in grasses_indexes or m_y > 5:
             m_y = math.floor(m_y)
             self.pos = m_x, m_y
@@ -303,8 +303,8 @@ def start_screen():
         clock.tick(FPS)
 
 
-def lose_screen():
-    show_dark_screen(LOSE_TEXT, LOSE_MENU)
+def game_over_screen():
+    show_dark_screen(GAME_OVER_TEXT, GAME_OVER_MENU)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -326,8 +326,8 @@ def lose_screen():
         clock.tick(FPS)
 
 
-def congrates_screen():
-    show_dark_screen(CONGRATES_TEXT, BACK_TEXT)
+def win_screen():
+    show_dark_screen(WIN_TEXT, BACK_TEXT)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -351,7 +351,7 @@ def play(number=1):
 
     if number > COUNT_LEVELS:
         win_sound.play()
-        congrates_screen()
+        win_screen()
 
     pygame.mouse.set_cursor(*pygame.cursors.arrow)
     screen.fill((0, 0, 0))
